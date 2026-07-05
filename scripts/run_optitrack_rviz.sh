@@ -11,7 +11,9 @@ VRPN_HOST="${VRPN_HOST:-192.168.151.100}"
 UDP_PORT="${UDP_PORT:-15001}"
 CONTROL_UDP_PORT="${CONTROL_UDP_PORT:-15002}"
 OPEN_RVIZ="${OPEN_RVIZ:-1}"
-SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-1}"
+TRACKERS="${TRACKERS:-piper_ee}"
+NODE_TRACKER="${NODE_TRACKER:-piper_ee}"
+SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-0}"
 
 PIDS=()
 
@@ -62,18 +64,25 @@ fi
 
 trap cleanup EXIT INT TERM
 
+NODE_ARGS=(
+  --config "${CONFIG}"
+  --host "${VRPN_HOST}"
+  --no-print
+  --udp "127.0.0.1:${UDP_PORT}"
+)
+if [[ -n "${NODE_TRACKER}" ]]; then
+  NODE_ARGS+=(--tracker "${NODE_TRACKER}")
+fi
+
 start_bg "optitrack_vrpn_clean_node" \
   "${NODE_BIN}" \
-  --config "${CONFIG}" \
-  --host "${VRPN_HOST}" \
-  --no-print \
-  --udp "127.0.0.1:${UDP_PORT}"
+  "${NODE_ARGS[@]}"
 
 RVIZ_ARGS=(
   --udp-port "${UDP_PORT}"
   --frame enu
   --axis-map z,-y,x
-  --trackers go2_base,piper_ee
+  --trackers "${TRACKERS}"
   --forward-corrected "127.0.0.1:${CONTROL_UDP_PORT}"
   --show-marker-frames
   --local-axis-map go2_base:z,-x,-y
@@ -92,5 +101,5 @@ if [[ "${OPEN_RVIZ}" == "1" ]]; then
   start_ros_bg "rviz2" rviz2 -d "${RVIZ_CONFIG}"
 fi
 
-echo "[run_optitrack_rviz] running. Corrected control UDP: 127.0.0.1:${CONTROL_UDP_PORT}. Press Ctrl+C to stop all processes."
+echo "[run_optitrack_rviz] running. Trackers=${TRACKERS}, node_tracker=${NODE_TRACKER:-all}, set_world_from_base=${SET_WORLD_FROM_BASE}, corrected control UDP=127.0.0.1:${CONTROL_UDP_PORT}. Press Ctrl+C to stop all processes."
 wait -n "${PIDS[@]}" || true

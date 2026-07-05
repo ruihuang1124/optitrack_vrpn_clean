@@ -1,0 +1,31 @@
+host: "192.168.151.100"
+update_rate_hz: 500
+tracker_scan_rate_hz: 1
+connect_retries: 5
+retry_delay_s: 1.0
+offset_samples: 100
+frame: "optitrack"
+tracker_filter: ""
+blacklist:
+  - "VRPN Control"
+
+print:
+  enabled: true
+  rate_hz: 20
+
+csv:
+  enabled: false
+  path: "/tmp/optitrack_vrpn_clean.csv"
+  flush: true
+
+udp:
+  enabled: false
+  host: "127.0.0.1"
+  port: 15001
+
+yaml:
+  enabled: false
+  directory: "/tmp/optitrack_poses"
+  rate_hz: 100
+  pose_frame: "enu"
+  flush: true

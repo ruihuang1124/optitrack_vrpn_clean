@@ -11,9 +11,10 @@ VRPN_HOST="${VRPN_HOST:-192.168.151.100}"
 UDP_PORT="${UDP_PORT:-15001}"
 CONTROL_UDP_PORT="${CONTROL_UDP_PORT:-15002}"
 OPEN_RVIZ="${OPEN_RVIZ:-1}"
-TRACKERS="${TRACKERS:-piper_ee}"
-NODE_TRACKER="${NODE_TRACKER:-piper_ee}"
-SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-0}"
+TRACKERS="${TRACKERS:-go2_base,piper_ee}"
+NODE_TRACKER="${NODE_TRACKER:-}"
+SET_WORLD_FROM="${SET_WORLD_FROM:-go2_base}"
+SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-}"
 
 PIDS=()
 
@@ -47,6 +48,67 @@ start_ros_bg() {
     'set +u; source "${ROS_SETUP}"; set -u; exec "$@"' \
     bash "$@" &
   PIDS+=("$!")
+}
+
+tracker_list_contains() {
+  local needle="$1"
+  local item
+  local -a items
+  IFS=',' read -ra items <<< "${TRACKERS}"
+  for item in "${items[@]}"; do
+    item="${item//[[:space:]]/}"
+    if [[ "${item}" == "${needle}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+first_tracker_in_list() {
+  local item
+  local -a items
+  IFS=',' read -ra items <<< "${TRACKERS}"
+  for item in "${items[@]}"; do
+    item="${item//[[:space:]]/}"
+    if [[ -n "${item}" ]]; then
+      echo "${item}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_world_from_tracker() {
+  if [[ "${SET_WORLD_FROM_BASE}" == "1" ]]; then
+    echo "go2_base"
+    return 0
+  fi
+
+  case "${SET_WORLD_FROM}" in
+    ""|"auto")
+      ;;
+    "0"|"false"|"False"|"none"|"off")
+      return 0
+      ;;
+    *)
+      echo "${SET_WORLD_FROM}"
+      return 0
+      ;;
+  esac
+
+  if [[ -z "${NODE_TRACKER}" || "${NODE_TRACKER}" == "go2_base" ]]; then
+    if [[ -z "${TRACKERS}" ]] || tracker_list_contains "go2_base"; then
+      echo "go2_base"
+      return 0
+    fi
+  fi
+
+  if [[ -n "${NODE_TRACKER}" ]]; then
+    echo "${NODE_TRACKER}"
+    return 0
+  fi
+
+  first_tracker_in_list || true
 }
 
 if [[ ! -f "${ROS_SETUP}" ]]; then
@@ -89,8 +151,9 @@ RVIZ_ARGS=(
   --local-axis-map piper_ee:y,-x,z
   --local-rpy-deg piper_ee:1.604,9.046,-2.787
 )
-if [[ "${SET_WORLD_FROM_BASE}" == "1" ]]; then
-  RVIZ_ARGS+=(--set-world-from-base)
+WORLD_FROM_TRACKER="$(resolve_world_from_tracker)"
+if [[ -n "${WORLD_FROM_TRACKER}" ]]; then
+  RVIZ_ARGS+=(--set-world-from "${WORLD_FROM_TRACKER}")
 fi
 
 sleep 0.5
@@ -101,5 +164,5 @@ if [[ "${OPEN_RVIZ}" == "1" ]]; then
   start_ros_bg "rviz2" rviz2 -d "${RVIZ_CONFIG}"
 fi
 
-echo "[run_optitrack_rviz] running. Trackers=${TRACKERS}, node_tracker=${NODE_TRACKER:-all}, set_world_from_base=${SET_WORLD_FROM_BASE}, corrected control UDP=127.0.0.1:${CONTROL_UDP_PORT}. Press Ctrl+C to stop all processes."
+echo "[run_optitrack_rviz] running. Trackers=${TRACKERS}, node_tracker=${NODE_TRACKER:-all}, set_world_from=${WORLD_FROM_TRACKER:-none}, corrected control UDP=127.0.0.1:${CONTROL_UDP_PORT}. Press Ctrl+C to stop all processes."
 wait -n "${PIDS[@]}" || true

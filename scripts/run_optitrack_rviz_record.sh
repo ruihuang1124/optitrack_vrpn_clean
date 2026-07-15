@@ -15,7 +15,7 @@ OPEN_RVIZ="${OPEN_RVIZ:-1}"
 SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-1}"
 RATE="${RATE:-50}"
 DURATION="${DURATION:-120}"
-OUT="${OUT:-/tmp/mocap_$(date +%Y%m%d_%H%M%S)_go2_base_piper_ee.csv}"
+OUT="${OUT:-/tmp/mocap_$(date +%Y%m%d_%H%M%S)_go2_body_marker_piper_ee.csv}"
 
 PIDS=()
 
@@ -82,20 +82,20 @@ RVIZ_ARGS=(
   --udp-port "${UDP_PORT}"
   --frame enu
   --axis-map z,-y,x
-  --trackers go2_base,piper_ee
+  --trackers go2_body_marker,piper_ee
   --show-marker-frames
-  --local-axis-map go2_base:z,-x,-y
+  --local-axis-map go2_body_marker:z,-x,-y
   --local-axis-map piper_ee:y,-x,z
   --local-rpy-deg piper_ee:1.604,9.046,-2.787
   --forward "127.0.0.1:${RECORD_UDP_PORT}"
 )
 RECORDER_ARGS=(
-  --base go2_base
+  --base go2_body_marker
   --ee piper_ee
   --udp-port "${RECORD_UDP_PORT}"
   --frame enu
   --axis-map z,-y,x
-  --local-axis-map go2_base:z,-x,-y
+  --local-axis-map go2_body_marker:z,-x,-y
   --local-axis-map piper_ee:y,-x,z
   --local-rpy-deg piper_ee:1.604,9.046,-2.787
   --rate "${RATE}"

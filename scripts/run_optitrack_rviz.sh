@@ -10,10 +10,11 @@ CONFIG="${CONFIG:-${PACKAGE_DIR}/config/default.yaml}"
 VRPN_HOST="${VRPN_HOST:-192.168.151.100}"
 UDP_PORT="${UDP_PORT:-15001}"
 CONTROL_UDP_PORT="${CONTROL_UDP_PORT:-15002}"
+EXTRA_CONTROL_UDP_PORTS="${EXTRA_CONTROL_UDP_PORTS:-}"
 OPEN_RVIZ="${OPEN_RVIZ:-1}"
-TRACKERS="${TRACKERS:-go2_base,piper_ee}"
+TRACKERS="${TRACKERS:-go2_body_marker,piper_ee}"
 NODE_TRACKER="${NODE_TRACKER:-}"
-SET_WORLD_FROM="${SET_WORLD_FROM:-go2_base}"
+SET_WORLD_FROM="${SET_WORLD_FROM:-go2_body_marker}"
 SET_WORLD_FROM_BASE="${SET_WORLD_FROM_BASE:-}"
 
 PIDS=()
@@ -80,7 +81,7 @@ first_tracker_in_list() {
 
 resolve_world_from_tracker() {
   if [[ "${SET_WORLD_FROM_BASE}" == "1" ]]; then
-    echo "go2_base"
+    echo "go2_body_marker"
     return 0
   fi
 
@@ -96,9 +97,9 @@ resolve_world_from_tracker() {
       ;;
   esac
 
-  if [[ -z "${NODE_TRACKER}" || "${NODE_TRACKER}" == "go2_base" ]]; then
-    if [[ -z "${TRACKERS}" ]] || tracker_list_contains "go2_base"; then
-      echo "go2_base"
+  if [[ -z "${NODE_TRACKER}" || "${NODE_TRACKER}" == "go2_body_marker" || "${NODE_TRACKER}" == "go2_base" ]]; then
+    if [[ -z "${TRACKERS}" ]] || tracker_list_contains "go2_body_marker"; then
+      echo "go2_body_marker"
       return 0
     fi
   fi
@@ -147,10 +148,20 @@ RVIZ_ARGS=(
   --trackers "${TRACKERS}"
   --forward-corrected "127.0.0.1:${CONTROL_UDP_PORT}"
   --show-marker-frames
-  --local-axis-map go2_base:z,-x,-y
+  --local-axis-map go2_body_marker:z,-x,-y
+  --local-axis-map piper_ee_marker:y,-x,z
   --local-axis-map piper_ee:y,-x,z
   --local-rpy-deg piper_ee:1.604,9.046,-2.787
 )
+if [[ -n "${EXTRA_CONTROL_UDP_PORTS}" ]]; then
+  IFS=',' read -ra extra_ports <<< "${EXTRA_CONTROL_UDP_PORTS}"
+  for extra_port in "${extra_ports[@]}"; do
+    extra_port="${extra_port//[[:space:]]/}"
+    if [[ -n "${extra_port}" ]]; then
+      RVIZ_ARGS+=(--forward-corrected "127.0.0.1:${extra_port}")
+    fi
+  done
+fi
 WORLD_FROM_TRACKER="$(resolve_world_from_tracker)"
 if [[ -n "${WORLD_FROM_TRACKER}" ]]; then
   RVIZ_ARGS+=(--set-world-from "${WORLD_FROM_TRACKER}")
